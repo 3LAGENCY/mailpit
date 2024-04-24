@@ -924,3 +924,82 @@ func GetOptions(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, _ = w.Write([]byte(""))
 }
+
+
+
+
+var reportPhishingDict = map[string]string{
+	"admin@google.com":  "cyberunittech{1234}",
+	"sender@example.com": "cyberunittech{4321}",
+}
+
+type CyberunittechResponse struct {
+	Message string `json:"flag"`
+}
+
+// ReportPhishing accepts email and returns flag in cyberunittech{} format
+func ReportPhishing(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var data struct {
+		Email string `json:"email"`
+	}
+
+	err := decoder.Decode(&data)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	email := data.Email
+
+	value, ok := reportPhishingDict[email]
+	if !ok {
+		value = "Email not found"
+	}
+
+	response := CyberunittechResponse{Message: value}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+}
+
+var reportApproveDict = map[string]string{
+	"admin@google.com":  "cyberunittech{1234}",
+	"sender@example.com": "cyberunittech{4321}",
+}
+
+// ReportApprove accepts email and returns flag in cyberunittech{} format
+func ReportApprove(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var data struct {
+		Email string `json:"email"`
+	}
+
+	err := decoder.Decode(&data)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	email := data.Email
+
+	value, ok := reportApproveDict[email]
+	if !ok {
+		value = "Email not found"
+	}
+
+	response := CyberunittechResponse{Message: value}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+}
