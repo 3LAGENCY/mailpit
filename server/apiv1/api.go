@@ -1086,3 +1086,67 @@ func CheckDomains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+var detailedAnalysisDict = map[string]string{
+	"admin@google.com":  "<div>test</div>",
+	"sender@example.com": `
+	<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="wrapper">
+      <h1>Hello</h1>
+      <div class="class1">test text</div>
+    </div>
+  </body>
+  <style>
+    .wrapper {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+    .class1 {
+      color: red;
+    }
+  </style>
+</html>
+	`,
+}
+
+type DetailedAnalysisResponse struct {
+	Message string `json:"html"`
+}
+
+func DetailedAnalysis(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var data struct {
+		Email string `json:"email"`
+	}
+
+	err := decoder.Decode(&data)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	email := data.Email
+
+	value, ok := detailedAnalysisDict[email]
+	if !ok {
+		value = "Email not found"
+	}
+
+	response := DetailedAnalysisResponse{Message: value}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+}

@@ -55,6 +55,7 @@ export default {
       flag: "", // Initially empty flag
       domainAnalizeData: {},
       domainAnalizeError: null,
+      detailedAnalysisHtml: "No detailed analysis data",
     };
   },
 
@@ -122,7 +123,7 @@ export default {
     self.isClassified = !!JSON.parse(storedValue);
 
     axios
-      .post(self.resolve(`/api/v1/domains/check`), {
+      .post(self.resolve(`/api/v1/domains-check`), {
         domains: self.findUniqueDomains(self.message.Text),
       })
       .then((response) => {
@@ -132,6 +133,14 @@ export default {
       .catch((error) => {
         console.log(error);
         self.domainAnalizeError = error.response.data;
+      });
+
+    axios
+      .post(this.resolve("/api/v1/detailed-analysis"), {
+        email: this.message.From.Address,
+      })
+      .then((response) => {
+        self.detailedAnalysisHtml = response.data.html;
       });
   },
 
@@ -811,6 +820,19 @@ export default {
         >
           Domain Analysis
         </button>
+        <button
+          class="nav-link"
+          id="nav-detailed-analyze-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#nav-detailed-analyze"
+          type="button"
+          role="tab"
+          aria-controls="nav-detailed-analyze"
+          aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
+        >
+          Detailed Analysis
+        </button>
       </div>
       <div class="my-3" v-if="!isClassified">
         <button
@@ -976,11 +998,11 @@ export default {
         />
       </div>
 
-      <!-- <div
+      <div
         class="tab-pane fade"
-        id="nav-domain-analyze"
+        id="nav-detailed-analyze"
         role="tabpanel"
-        aria-labelledby="nav-domain-analyze-tab"
+        aria-labelledby="nav-detailed-analyze-tab"
         tabindex="0"
       >
         <div id="responsive-view">
@@ -988,14 +1010,14 @@ export default {
             target-blank=""
             class="tab-pane d-block"
             id="preview-html"
-            :srcdoc="sanitizeHTML('<div>test</div>')"
+            :srcdoc="sanitizeHTML(detailedAnalysisHtml)"
             v-on:load="resizeIframe"
             frameborder="0"
             style="width: 100%; height: 100%; background: #fff"
           >
           </iframe>
         </div>
-      </div> -->
+      </div>
     </div>
     <FlagPopup :flag="flag" @close="flag = ''"></FlagPopup>
   </div>

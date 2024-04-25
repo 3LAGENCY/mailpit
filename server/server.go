@@ -154,7 +154,8 @@ func apiRoutes() *mux.Router {
 
 	r.HandleFunc(config.Webroot+"api/v1/report/phishing", middleWareFunc(apiv1.ReportPhishing)).Methods("POST")
 	r.HandleFunc(config.Webroot+"api/v1/report/approve", middleWareFunc(apiv1.ReportApprove)).Methods("POST")
-	r.HandleFunc(config.Webroot+"api/v1/domains/check", middleWareFunc(apiv1.CheckDomains)).Methods("POST")
+	r.HandleFunc(config.Webroot+"api/v1/domains-check", middleWareFunc(apiv1.CheckDomains)).Methods("POST")
+	r.HandleFunc(config.Webroot+"api/v1/detailed-analysis", middleWareFunc(apiv1.DetailedAnalysis)).Methods("POST")
 
 
 	// web UI websocket
