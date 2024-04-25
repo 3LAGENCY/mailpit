@@ -836,14 +836,14 @@ export default {
       </div>
       <div class="my-3" v-if="!isClassified">
         <button
-          class="btn btn-primary mx-0 me-3"
+          class="btn btn-danger mx-0 me-3"
           style="padding: 8px 16px"
           @click="handleReportPhishing"
         >
           Report phishing
         </button>
         <button
-          class="btn btn-secondary mx-0"
+          class="btn btn-success mx-0"
           style="padding: 8px 16px"
           @click="handleReportApprove"
         >
