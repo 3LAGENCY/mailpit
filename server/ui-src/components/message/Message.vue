@@ -114,6 +114,10 @@ export default {
         }, 200);
       });
     });
+
+    const storageKey = `isClassified-${self.message.ID}`;
+    const storedValue = localStorage.getItem(storageKey);
+    this.isClassified = !!JSON.parse(storedValue);
   },
 
   methods: {
@@ -254,6 +258,8 @@ export default {
 
     classify() {
       this.isClassified = true;
+      const storageKey = `isClassified-${this.message.ID}`;
+      localStorage.setItem(storageKey, JSON.stringify(true));
     },
 
     handleReportPhishing() {
@@ -770,7 +776,7 @@ export default {
           </template>
         </div>
       </div>
-      <div class="my-3">
+      <div class="my-3" v-if="!isClassified">
         <button
           class="btn btn-primary mx-0 me-3"
           style="padding: 8px 16px"
