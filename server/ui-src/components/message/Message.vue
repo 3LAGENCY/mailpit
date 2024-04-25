@@ -51,8 +51,7 @@ export default {
         tablet: "width: 768px; height: 1024px",
         display: "width: 100%; height: 100%",
       },
-      blurStyle: "blur(5px)", // Initially blurred on tabs
-      pointerEventsStyle: "none", // Initially disable pointer events on tabs
+      isClassified: false,
       flag: "", // Initially empty flag
     };
   },
@@ -253,9 +252,8 @@ export default {
       return html;
     },
 
-    clearBlur() {
-      this.blurStyle = "none"; // Remove blur effect
-      this.pointerEventsStyle = "auto"; // Enable pointer events
+    classify() {
+      this.isClassified = true;
     },
 
     handleReportPhishing() {
@@ -264,7 +262,7 @@ export default {
           email: this.message.From.Address,
         })
         .then((response) => {
-          this.clearBlur();
+          this.classify();
           const flag = response.data.flag;
           this.flag = flag; // Set flag to trigger popup
         });
@@ -276,7 +274,7 @@ export default {
           email: this.message.From.Address,
         })
         .then((response) => {
-          this.clearBlur();
+          this.classify();
           const flag = response.data.flag;
           this.flag = flag; // Set flag to trigger popup
         });
@@ -508,9 +506,9 @@ export default {
         id="nav-tab"
         role="tablist"
         :style="{
-          filter: blurStyle,
-          pointerEvents: pointerEventsStyle,
-          border: blurStyle === 'none' ? '' : 'none',
+          filter: isClassified ? 'none' : 'blur(5px)',
+          pointerEvents: isClassified ? 'auto' : 'none',
+          border: isClassified ? '' : 'none',
         }"
       >
         <template v-if="message.HTML">
@@ -526,7 +524,9 @@ export default {
               aria-selected="true"
               ref="navhtml"
               v-on:click="resizeIFrames()"
-              :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+              :style="{
+                border: isClassified ? '' : 'none',
+              }"
             >
               HTML
             </button>
@@ -578,7 +578,7 @@ export default {
           aria-controls="nav-plain-text"
           aria-selected="false"
           :class="message.HTML == '' ? 'show' : ''"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Text
         </button>
@@ -591,7 +591,7 @@ export default {
           role="tab"
           aria-controls="nav-headers"
           aria-selected="false"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           <span class="d-sm-none">Hdrs</span
           ><span class="d-none d-sm-inline">Headers</span>
@@ -605,7 +605,7 @@ export default {
           role="tab"
           aria-controls="nav-raw"
           aria-selected="false"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Raw
         </button>
@@ -615,7 +615,7 @@ export default {
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+            :style="{ border: isClassified ? '' : 'none' }"
           >
             Checks
           </button>
@@ -700,7 +700,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showHTMLCheck && message.HTML != ''"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           HTML Check
           <span
@@ -721,7 +721,7 @@ export default {
           aria-controls="nav-link-check"
           aria-selected="false"
           v-if="mailbox.showLinkCheck"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Link Check
           <i
@@ -745,7 +745,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showSpamCheck && mailbox.uiConfig.SpamAssassin"
-          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Spam Analysis
           <span
