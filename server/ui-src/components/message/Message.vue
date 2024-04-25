@@ -53,6 +53,8 @@ export default {
       },
       isClassified: false,
       flag: "", // Initially empty flag
+      domainAnalizeData: {},
+      domainAnalizeError: null,
     };
   },
 
@@ -117,7 +119,20 @@ export default {
 
     const storageKey = `isClassified-${self.message.ID}`;
     const storedValue = localStorage.getItem(storageKey);
-    this.isClassified = !!JSON.parse(storedValue);
+    self.isClassified = !!JSON.parse(storedValue);
+
+    axios
+      .post(self.resolve(`/api/v1/domains/check`), {
+        domains: self.findUniqueDomains(self.message.Text),
+      })
+      .then((response) => {
+        const data = response.data.result;
+        self.domainAnalizeData = { ...data };
+      })
+      .catch((error) => {
+        console.log(error);
+        self.domainAnalizeError = error.response.data;
+      });
   },
 
   methods: {
@@ -284,6 +299,13 @@ export default {
           const flag = response.data.flag;
           this.flag = flag; // Set flag to trigger popup
         });
+    },
+    findUniqueDomains(text) {
+      const domainRegex = /(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}/gi;
+
+      const matches = text.toLowerCase().match(domainRegex);
+
+      return [...new Set(matches)];
     },
   },
 };
@@ -775,6 +797,20 @@ export default {
             </button>
           </template>
         </div>
+
+        <button
+          class="nav-link"
+          id="nav-domain-analyze-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#nav-domain-analyze"
+          type="button"
+          role="tab"
+          aria-controls="nav-domain-analyze"
+          aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
+        >
+          Domain Analysis
+        </button>
       </div>
       <div class="my-3" v-if="!isClassified">
         <button
@@ -852,6 +888,28 @@ export default {
         >
         </Attachments>
       </div>
+
+      <div
+        class="tab-pane fade"
+        id="nav-domain-analyze"
+        role="tabpanel"
+        aria-labelledby="nav-domain-analyze-tab"
+        tabindex="0"
+      >
+        <json-viewer
+          :value="
+            Object.keys(domainAnalizeData).length
+              ? domainAnalizeData
+              : domainAnalizeError || {
+                  message: 'No domains found',
+                }
+          "
+          :expand-depth="10"
+          copyable
+          theme="jv-dark"
+        ></json-viewer>
+      </div>
+
       <div
         class="tab-pane fade"
         id="nav-headers"
@@ -917,6 +975,27 @@ export default {
           @setLinkErrors="(n) => (linkCheckErrors = n)"
         />
       </div>
+
+      <!-- <div
+        class="tab-pane fade"
+        id="nav-domain-analyze"
+        role="tabpanel"
+        aria-labelledby="nav-domain-analyze-tab"
+        tabindex="0"
+      >
+        <div id="responsive-view">
+          <iframe
+            target-blank=""
+            class="tab-pane d-block"
+            id="preview-html"
+            :srcdoc="sanitizeHTML('<div>test</div>')"
+            v-on:load="resizeIframe"
+            frameborder="0"
+            style="width: 100%; height: 100%; background: #fff"
+          >
+          </iframe>
+        </div>
+      </div> -->
     </div>
     <FlagPopup :flag="flag" @close="flag = ''"></FlagPopup>
   </div>
