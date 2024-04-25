@@ -507,7 +507,11 @@ export default {
         class="nav nav-tabs my-3"
         id="nav-tab"
         role="tablist"
-        :style="{ filter: blurStyle, pointerEvents: pointerEventsStyle }"
+        :style="{
+          filter: blurStyle,
+          pointerEvents: pointerEventsStyle,
+          border: blurStyle === 'none' ? '' : 'none',
+        }"
       >
         <template v-if="message.HTML">
           <div class="btn-group">
@@ -522,6 +526,7 @@ export default {
               aria-selected="true"
               ref="navhtml"
               v-on:click="resizeIFrames()"
+              :style="{ border: blurStyle === 'none' ? '' : 'none' }"
             >
               HTML
             </button>
@@ -573,6 +578,7 @@ export default {
           aria-controls="nav-plain-text"
           aria-selected="false"
           :class="message.HTML == '' ? 'show' : ''"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           Text
         </button>
@@ -585,6 +591,7 @@ export default {
           role="tab"
           aria-controls="nav-headers"
           aria-selected="false"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           <span class="d-sm-none">Hdrs</span
           ><span class="d-none d-sm-inline">Headers</span>
@@ -598,6 +605,7 @@ export default {
           role="tab"
           aria-controls="nav-raw"
           aria-selected="false"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           Raw
         </button>
@@ -607,6 +615,7 @@ export default {
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
+            :style="{ border: blurStyle === 'none' ? '' : 'none' }"
           >
             Checks
           </button>
@@ -691,6 +700,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showHTMLCheck && message.HTML != ''"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           HTML Check
           <span
@@ -711,6 +721,7 @@ export default {
           aria-controls="nav-link-check"
           aria-selected="false"
           v-if="mailbox.showLinkCheck"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           Link Check
           <i
@@ -734,6 +745,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showSpamCheck && mailbox.uiConfig.SpamAssassin"
+          :style="{ border: blurStyle === 'none' ? '' : 'none' }"
         >
           Spam Analysis
           <span
