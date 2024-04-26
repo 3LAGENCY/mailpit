@@ -1006,85 +1006,103 @@ func ReportApprove(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type VirusTotalResponse any
-
-type DomainsCheckResponse struct {
-	Domains map[string]VirusTotalResponse `json:"result"`
+type VirusTotalResponse struct {
+    Data struct {
+        Attributes struct {
+            LastAnalysisResults map[string]interface{} `json:"last_analysis_results"`
+        } `json:"attributes"`
+    } `json:"data"`
 }
 
+type DomainsCheckResponse struct {
+	Domains map[string]map[string]interface{} `json:"result"`
+}
+
+
 func CheckDomains(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
+    decoder := json.NewDecoder(r.Body)
 
-	var data struct {
-		Domains []string `json:"domains"`
-	}
+    var data struct {
+        Domains []string `json:"domains"`
+    }
 
-	err := decoder.Decode(&data)
-	if err != nil {
-		httpError(w, err.Error())
-		return
-	}
+    err := decoder.Decode(&data)
+    if err != nil {
+        httpError(w, err.Error())
+        return
+    }
 
-	domains := data.Domains
+    domains := data.Domains
 
-	apiKey, _ := os.LookupEnv("VIRUSTOTAL_API_KEY")
+    apiKey, _ := os.LookupEnv("VIRUSTOTAL_API_KEY")
 
-	results := make(map[string]VirusTotalResponse)
-	var anyError error // Track if any request failed
+    results := make(map[string]map[string]interface{})
+    var errors []error // Store errors for logging or later reporting
 
-	for _, domain := range domains {
-		url := fmt.Sprintf("https://www.virustotal.com/api/v3/domains/%s", domain)
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			anyError = fmt.Errorf("error creating request for domain %s: %w", domain, err)
-			continue
-		}
+    for _, domain := range domains {
+        url := fmt.Sprintf("https://www.virustotal.com/api/v3/domains/%s", domain)
+        req, err := http.NewRequest(http.MethodGet, url, nil)
+        if err != nil {
+            errors = append(errors, fmt.Errorf("error creating request for domain %s: %w", domain, err))
+            continue
+        }
 
-		req.Header.Set("x-apikey", apiKey)
+        req.Header.Set("x-apikey", apiKey)
 
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			anyError = fmt.Errorf("%w", err)
-			continue
-		}
-		defer resp.Body.Close()
+        client := &http.Client{}
+        resp, err := client.Do(req)
+        if err != nil {
+            errors = append(errors, fmt.Errorf("%w", err))
+            continue
+        }
+        defer resp.Body.Close()
 
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			anyError = fmt.Errorf("%w", err)
-			continue
-		}
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil {
+            errors = append(errors, fmt.Errorf("%w", err))
+            continue
+        }
 
-		if resp.StatusCode != http.StatusOK {
-			anyError = fmt.Errorf("%s", string(body))
-			continue
-		}
+        if resp.StatusCode != http.StatusOK {
+            errors = append(errors, fmt.Errorf("%s", string(body)))
+            continue
+        }
 
-		var virusTotalResponse VirusTotalResponse
-		err = json.Unmarshal(body, &virusTotalResponse)
-		if err != nil {
-			anyError = fmt.Errorf("%w", err)
-			continue
-		}
+        var virusTotalResponse VirusTotalResponse
+        err = json.Unmarshal(body, &virusTotalResponse)
+        if err != nil {
+            errors = append(errors, fmt.Errorf("%w", err))
+            continue
+        }
 
-		results[domain] = virusTotalResponse
-	}
+		filteredResults := make(map[string]interface{})
+    	for key, value := range virusTotalResponse.Data.Attributes.LastAnalysisResults {
+        	if result, ok := value.(map[string]interface{}); ok {
+         		if result["result"] != "clean" {
+         		   filteredResults[key] = value
+				}
+        	}
+    	}
 
-	if anyError != nil {
-		// Return error if any request failed
-		httpError(w, anyError.Error())
-		return
-	}
+        results[domain] = filteredResults
+    }
 
-	response := DomainsCheckResponse{Domains: results}
+    // Handle errors after processing all domains
+    if len(errors) > 0 {
+        // Log errors or handle them appropriately (e.g., include them in a separate response field)
+        for _, err := range errors {
+            fmt.Println("Error:", err) // Log the error
+        }
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		httpError(w, err.Error())
-		return
-	}
+    response := DomainsCheckResponse{Domains: results}
+
+    w.Header().Set("Content-Type", "application/json")
+    err = json.NewEncoder(w).Encode(response)
+    if err != nil {
+        httpError(w, err.Error())
+        return
+    }
 }
 
 var detailedAnalysisDict = map[string]string{
