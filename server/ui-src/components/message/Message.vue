@@ -727,27 +727,7 @@ export default {
             </li>
           </ul>
         </div>
-        <button
-          class="d-none d-xl-inline-block nav-link position-relative"
-          id="nav-html-check-tab"
-          data-bs-toggle="tab"
-          data-bs-target="#nav-html-check"
-          type="button"
-          role="tab"
-          aria-controls="nav-html"
-          aria-selected="false"
-          v-if="mailbox.showHTMLCheck && message.HTML != ''"
-          :style="{ border: isClassified ? '' : 'none' }"
-        >
-          HTML Check
-          <span
-            class="badge rounded-pill p-1"
-            :class="htmlScoreColor"
-            v-if="htmlScore !== false"
-          >
-            <small>{{ Math.floor(htmlScore) }}%</small>
-          </span>
-        </button>
+
         <button
           class="d-none d-xl-inline-block nav-link"
           id="nav-link-check-tab"
@@ -793,19 +773,6 @@ export default {
             <small>{{ spamScore }}</small>
           </span>
         </button>
-
-        <div class="d-none d-lg-block ms-auto me-3" v-if="showMobileButtons">
-          <template v-for="(_, key) in responsiveSizes">
-            <button
-              class="btn"
-              :disabled="scaleHTMLPreview == key"
-              :title="'Switch to ' + key + ' view'"
-              v-on:click="scaleHTMLPreview = key"
-            >
-              <i class="bi" :class="'bi-' + key"></i>
-            </button>
-          </template>
-        </div>
 
         <button
           class="nav-link"
