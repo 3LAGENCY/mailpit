@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/axllent/mailpit/server/pop3"
 	"github.com/axllent/mailpit/server/websockets"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 //go:embed ui
@@ -35,6 +37,10 @@ var AccessControlAllowOrigin string
 
 // Listen will start the httpd
 func Listen() {
+	if err := godotenv.Load(); err != nil {
+        log.Print("No .env file found")
+    }
+	
 	isReady := &atomic.Value{}
 	isReady.Store(false)
 	stats.Track()
@@ -148,6 +154,9 @@ func apiRoutes() *mux.Router {
 
 	r.HandleFunc(config.Webroot+"api/v1/report/phishing", middleWareFunc(apiv1.ReportPhishing)).Methods("POST")
 	r.HandleFunc(config.Webroot+"api/v1/report/approve", middleWareFunc(apiv1.ReportApprove)).Methods("POST")
+	r.HandleFunc(config.Webroot+"api/v1/domains-check", middleWareFunc(apiv1.CheckDomains)).Methods("POST")
+	r.HandleFunc(config.Webroot+"api/v1/detailed-analysis", middleWareFunc(apiv1.DetailedAnalysis)).Methods("POST")
+
 
 	// web UI websocket
 	r.HandleFunc(config.Webroot+"api/events", apiWebsocket).Methods("GET")

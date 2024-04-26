@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/mail"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -995,6 +997,151 @@ func ReportApprove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := CyberunittechResponse{Message: value}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+}
+
+type VirusTotalResponse any
+
+type DomainsCheckResponse struct {
+	Domains map[string]VirusTotalResponse `json:"result"`
+}
+
+func CheckDomains(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var data struct {
+		Domains []string `json:"domains"`
+	}
+
+	err := decoder.Decode(&data)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	domains := data.Domains
+
+	apiKey, _ := os.LookupEnv("VIRUSTOTAL_API_KEY")
+
+	results := make(map[string]VirusTotalResponse)
+	var anyError error // Track if any request failed
+
+	for _, domain := range domains {
+		url := fmt.Sprintf("https://www.virustotal.com/api/v3/domains/%s", domain)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			anyError = fmt.Errorf("error creating request for domain %s: %w", domain, err)
+			continue
+		}
+
+		req.Header.Set("x-apikey", apiKey)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			anyError = fmt.Errorf("%w", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			anyError = fmt.Errorf("%w", err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			anyError = fmt.Errorf("%s", string(body))
+			continue
+		}
+
+		var virusTotalResponse VirusTotalResponse
+		err = json.Unmarshal(body, &virusTotalResponse)
+		if err != nil {
+			anyError = fmt.Errorf("%w", err)
+			continue
+		}
+
+		results[domain] = virusTotalResponse
+	}
+
+	if anyError != nil {
+		// Return error if any request failed
+		httpError(w, anyError.Error())
+		return
+	}
+
+	response := DomainsCheckResponse{Domains: results}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+}
+
+var detailedAnalysisDict = map[string]string{
+	"admin@google.com":  "<div>test</div>",
+	"sender@example.com": `
+	<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="wrapper">
+      <h1>Hello</h1>
+      <div class="class1">test text</div>
+    </div>
+  </body>
+  <style>
+    .wrapper {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+    .class1 {
+      color: red;
+    }
+  </style>
+</html>
+	`,
+}
+
+type DetailedAnalysisResponse struct {
+	Message string `json:"html"`
+}
+
+func DetailedAnalysis(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var data struct {
+		Email string `json:"email"`
+	}
+
+	err := decoder.Decode(&data)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	email := data.Email
+
+	value, ok := detailedAnalysisDict[email]
+	if !ok {
+		value = "Email not found"
+	}
+
+	response := DetailedAnalysisResponse{Message: value}
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)

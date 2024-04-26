@@ -51,9 +51,11 @@ export default {
         tablet: "width: 768px; height: 1024px",
         display: "width: 100%; height: 100%",
       },
-      blurStyle: "blur(5px)", // Initially blurred on tabs
-      pointerEventsStyle: "none", // Initially disable pointer events on tabs
+      isClassified: false,
       flag: "", // Initially empty flag
+      domainAnalizeData: {},
+      domainAnalizeError: null,
+      detailedAnalysisHtml: "No detailed analysis data",
     };
   },
 
@@ -115,6 +117,31 @@ export default {
         }, 200);
       });
     });
+
+    const storageKey = `isClassified-${self.message.ID}`;
+    const storedValue = localStorage.getItem(storageKey);
+    self.isClassified = !!JSON.parse(storedValue);
+
+    axios
+      .post(self.resolve(`/api/v1/domains-check`), {
+        domains: self.findUniqueDomains(self.message.Text),
+      })
+      .then((response) => {
+        const data = response.data.result;
+        self.domainAnalizeData = { ...data };
+      })
+      .catch((error) => {
+        console.log(error);
+        self.domainAnalizeError = error.response.data;
+      });
+
+    axios
+      .post(this.resolve("/api/v1/detailed-analysis"), {
+        email: this.message.From.Address,
+      })
+      .then((response) => {
+        self.detailedAnalysisHtml = response.data.html;
+      });
   },
 
   methods: {
@@ -253,9 +280,10 @@ export default {
       return html;
     },
 
-    clearBlur() {
-      this.blurStyle = "none"; // Remove blur effect
-      this.pointerEventsStyle = "auto"; // Enable pointer events
+    classify() {
+      this.isClassified = true;
+      const storageKey = `isClassified-${this.message.ID}`;
+      localStorage.setItem(storageKey, JSON.stringify(true));
     },
 
     handleReportPhishing() {
@@ -264,7 +292,7 @@ export default {
           email: this.message.From.Address,
         })
         .then((response) => {
-          this.clearBlur();
+          this.classify();
           const flag = response.data.flag;
           this.flag = flag; // Set flag to trigger popup
         });
@@ -276,10 +304,17 @@ export default {
           email: this.message.From.Address,
         })
         .then((response) => {
-          this.clearBlur();
+          this.classify();
           const flag = response.data.flag;
           this.flag = flag; // Set flag to trigger popup
         });
+    },
+    findUniqueDomains(text) {
+      const domainRegex = /(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}/gi;
+
+      const matches = text.toLowerCase().match(domainRegex);
+
+      return [...new Set(matches)];
     },
   },
 };
@@ -507,7 +542,11 @@ export default {
         class="nav nav-tabs my-3"
         id="nav-tab"
         role="tablist"
-        :style="{ filter: blurStyle, pointerEvents: pointerEventsStyle }"
+        :style="{
+          filter: isClassified ? 'none' : 'blur(5px)',
+          pointerEvents: isClassified ? 'auto' : 'none',
+          border: isClassified ? '' : 'none',
+        }"
       >
         <template v-if="message.HTML">
           <div class="btn-group">
@@ -522,6 +561,9 @@ export default {
               aria-selected="true"
               ref="navhtml"
               v-on:click="resizeIFrames()"
+              :style="{
+                border: isClassified ? '' : 'none',
+              }"
             >
               HTML
             </button>
@@ -573,6 +615,7 @@ export default {
           aria-controls="nav-plain-text"
           aria-selected="false"
           :class="message.HTML == '' ? 'show' : ''"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Text
         </button>
@@ -585,6 +628,7 @@ export default {
           role="tab"
           aria-controls="nav-headers"
           aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           <span class="d-sm-none">Hdrs</span
           ><span class="d-none d-sm-inline">Headers</span>
@@ -598,6 +642,7 @@ export default {
           role="tab"
           aria-controls="nav-raw"
           aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Raw
         </button>
@@ -607,6 +652,7 @@ export default {
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
+            :style="{ border: isClassified ? '' : 'none' }"
           >
             Checks
           </button>
@@ -691,6 +737,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showHTMLCheck && message.HTML != ''"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           HTML Check
           <span
@@ -711,6 +758,7 @@ export default {
           aria-controls="nav-link-check"
           aria-selected="false"
           v-if="mailbox.showLinkCheck"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Link Check
           <i
@@ -734,6 +782,7 @@ export default {
           aria-controls="nav-html"
           aria-selected="false"
           v-if="mailbox.showSpamCheck && mailbox.uiConfig.SpamAssassin"
+          :style="{ border: isClassified ? '' : 'none' }"
         >
           Spam Analysis
           <span
@@ -757,17 +806,44 @@ export default {
             </button>
           </template>
         </div>
-      </div>
-      <div class="my-3">
+
         <button
-          class="btn btn-primary mx-0 me-3"
+          class="nav-link"
+          id="nav-domain-analyze-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#nav-domain-analyze"
+          type="button"
+          role="tab"
+          aria-controls="nav-domain-analyze"
+          aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
+        >
+          Domain Analysis
+        </button>
+        <button
+          class="nav-link"
+          id="nav-detailed-analyze-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#nav-detailed-analyze"
+          type="button"
+          role="tab"
+          aria-controls="nav-detailed-analyze"
+          aria-selected="false"
+          :style="{ border: isClassified ? '' : 'none' }"
+        >
+          Detailed Analysis
+        </button>
+      </div>
+      <div class="my-3" v-if="!isClassified">
+        <button
+          class="btn btn-danger mx-0 me-3"
           style="padding: 8px 16px"
           @click="handleReportPhishing"
         >
           Report phishing
         </button>
         <button
-          class="btn btn-secondary mx-0"
+          class="btn btn-success mx-0"
           style="padding: 8px 16px"
           @click="handleReportApprove"
         >
@@ -834,6 +910,28 @@ export default {
         >
         </Attachments>
       </div>
+
+      <div
+        class="tab-pane fade"
+        id="nav-domain-analyze"
+        role="tabpanel"
+        aria-labelledby="nav-domain-analyze-tab"
+        tabindex="0"
+      >
+        <json-viewer
+          :value="
+            Object.keys(domainAnalizeData).length
+              ? domainAnalizeData
+              : domainAnalizeError || {
+                  message: 'No domains found',
+                }
+          "
+          :expand-depth="10"
+          copyable
+          theme="jv-dark"
+        ></json-viewer>
+      </div>
+
       <div
         class="tab-pane fade"
         id="nav-headers"
@@ -898,6 +996,27 @@ export default {
           :message="message"
           @setLinkErrors="(n) => (linkCheckErrors = n)"
         />
+      </div>
+
+      <div
+        class="tab-pane fade"
+        id="nav-detailed-analyze"
+        role="tabpanel"
+        aria-labelledby="nav-detailed-analyze-tab"
+        tabindex="0"
+      >
+        <div id="responsive-view">
+          <iframe
+            target-blank=""
+            class="tab-pane d-block"
+            id="preview-html"
+            :srcdoc="sanitizeHTML(detailedAnalysisHtml)"
+            v-on:load="resizeIframe"
+            frameborder="0"
+            style="width: 100%; height: 100%; background: #fff"
+          >
+          </iframe>
+        </div>
       </div>
     </div>
     <FlagPopup :flag="flag" @close="flag = ''"></FlagPopup>
